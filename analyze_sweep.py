@@ -206,6 +206,22 @@ def add_calibrated(df, by="tier"):
             zip(df.family, df.verdict, df.correct, df.lam, df.c)]
     else:
         df["ev_verdict"] = float("nan")
+    # Check-iff-no-working policy (verify only): check iff the Call 1
+    # response had no working (any text before the Verdict line). Observable
+    # from the transcript; in-sample; exploratory. It works only because
+    # every skipped verdict is FALSE.
+    if "working" in df.columns:
+        def nowork_action(f, w):
+            if f != "verify":
+                return None
+            return "check" if not w else "act"
+        df["ev_nowork"] = [
+            payoff(f, nowork_action(f, w), k, l, _cc(c))
+            if nowork_action(f, w) is not None else float("nan")
+            for f, w, k, l, c in
+            zip(df.family, df.working, df.correct, df.lam, df.c)]
+    else:
+        df["ev_nowork"] = float("nan")
     return df
 
 
@@ -215,7 +231,7 @@ def ev_gap_table(df, n_boot=1000, seed=0):
     an item first, so repeated epochs don't fake extra independence)."""
     rng = np.random.default_rng(seed)
     cols = ["ev", "ev_calib", "ev_oracle", "ev_always_act", "ev_never",
-            "ev_verdict"]
+            "ev_verdict", "ev_nowork"]
     rows = []
     for (m, f, l, c), g in df.groupby(["model", "family", "lam", "c"],
                                       dropna=False):
@@ -232,6 +248,7 @@ def ev_gap_table(df, n_boot=1000, seed=0):
             ev_always_act=per_item.ev_always_act.mean(),
             ev_never=per_item.ev_never.mean(),
             ev_verdict=per_item.ev_verdict.mean(),
+            ev_nowork=per_item.ev_nowork.mean(),
             gap=gap_i.mean(), gap_lo=lo, gap_hi=hi,
             gap_sig=bool(lo > 0 or hi < 0)))
     return pd.DataFrame(rows)
@@ -293,11 +310,53 @@ def main():
     raw = demo_data() if a.demo else pd.read_csv(a.csv)
     if a.call1:
         import json as _json
+        import re as _re
         c1 = _json.load(open(a.call1))
         verdict = {(r["id"], r["epoch"]): str(r.get("answer_text", "")).strip().upper()
                    for r in c1}
         raw["verdict"] = [verdict.get((i, e)) for i, e in
                           zip(raw.item_id, raw.epoch)]
+        # "Working" = any text before the Verdict line (verify) or the
+        # Answer line (bet). This is the classification the verify-first
+        # analysis rests on, so it is computed here from the raw text.
+        def _has_working(r):
+            pat = r"verdict\s*:" if r["family"] == "verify" else r"answer\s*:"
+            m = _re.search(pat, r.get("raw", ""), _re.IGNORECASE)
+            return bool(m and len(r["raw"][:m.start()].strip()) > 0)
+        working = {(r["id"], r["epoch"]): _has_working(r) for r in c1}
+        raw["working"] = [working.get((i, e)) for i, e in
+                          zip(raw.item_id, raw.epoch)]
+        # REGRESSION CHECK (added 2026-11-14 after two parser bugs):
+        # the sweep's `correct` column must equal Call 1's correctness joined
+        # on (item_id, epoch). fix_parser.py once rebuilt this column by
+        # joining FOUR Call 1 files (the A run, a re-pilot, and two slices
+        # from different models) and let the later files overwrite the A
+        # run's values on 14 keys, understating the sweep's bet accuracy to
+        # 0.969 and making the bet EVs inconsistent with Table 1. This
+        # assertion would have caught that immediately. It also pins the
+        # expected wrong-instance counts (31 verify, 4 bet) from the
+        # validated A run.
+        c1_correct = {(r["id"], r["epoch"]): bool(r["initial_correct"])
+                      for r in c1}
+        mism = sum(1 for i, e, k in zip(raw.item_id, raw.epoch, raw.correct)
+                   if c1_correct.get((i, e)) != bool(k))
+        assert mism == 0, \
+            f"sweep `correct` disagrees with Call 1 on {mism} rows"
+        # Pin the expected wrong-instance counts, but only when the sweep
+        # covers the full Call 1 set (3 epochs). The 1-epoch ablation has
+        # fewer, so there the mismatch check above is the guard.
+        u = raw.drop_duplicates(["item_id", "epoch"])
+        if len(u) == len(c1_correct):
+            for fam, expected_wrong in (("bet", 4), ("verify", 31)):
+                n_wrong = int((~u[u.family == fam].correct.astype(bool)).sum())
+                assert n_wrong == expected_wrong, \
+                    f"{fam}: {n_wrong} wrong instances in Call 1, expected {expected_wrong}"
+            print(f"regression check passed: sweep `correct` == Call 1 on "
+                  f"{len(raw)} rows; wrong instances bet 4, verify 31")
+        else:
+            print(f"regression check passed: sweep `correct` == Call 1 on "
+                  f"{len(raw)} rows ({len(u)} of {len(c1_correct)} "
+                  f"Call 1 records; partial sweep, count check skipped)")
     df = add_calibrated(score_rows(raw), by=a.calib_by)
     os.makedirs(a.outdir, exist_ok=True)
     tabs = {"model_level": model_level(df), "cell_level": cell_level(df),

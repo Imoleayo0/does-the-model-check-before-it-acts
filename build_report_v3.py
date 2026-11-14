@@ -309,8 +309,8 @@ body_text(
 body_text(
     "Actions. Verify coherence is 0.881–0.974. The model checks only while stating 100% "
     "confidence (all 166 checks). It checks more often on its wrong answers than its right "
-    "ones (P(check|wrong) = 0.211 vs 0.061; ratio 3.48, item-level bootstrap 95% CI [2.59, "
-    "4.66], 15 distinct wrong items). That signal tracks correctness and not response mode: "
+    "ones (P(check|wrong) = 0.206 vs 0.060; ratio 3.42, item-level bootstrap 95% CI [2.57, "
+    "4.55], 15 distinct wrong items). That signal tracks correctness and not response mode: "
     "P(check | no working) = 0.104 vs 0.066 with working, and on the 21 items observed in "
     "both modes the ratio is 1.48 (CI [0.71, 3.13], including 1). Bet-or-pass shows no such "
     "signal. The verify EV gap is 0.301 (CI [0.095, 0.541]) at \u03bb=4, c=0.1 (model 0.599, "
@@ -353,13 +353,15 @@ body_text(
     "on 986 records), and by recomputing every downstream table. The lesson is practical: "
     "when a result depends on parsing free-text model output, validate the parser with a "
     "second independent method and read raw outputs before building on any headline number. "
-    "Results affected by the bug are listed in the repository's README. A second, smaller "
+    "Results affected by the bug are listed in Appendix E. A second, smaller "
     "error in the same fix script then corrupted the sweep's correctness column: it rebuilt "
     "that column by joining four Call 1 files (the A run, a re-pilot, and two slices from "
     "different models) and let the later files overwrite the A run's values on 14 "
     "(item, epoch) keys, understating the sweep's bet accuracy to 0.969. That was caught "
     "because the corrected EV numbers contradicted Table 1's accuracy, and fixed by "
-    "rebuilding the column from the A run alone.")
+    "rebuilding the column from the A run alone. The analysis script now asserts that the "
+    "sweep's correctness column equals Call 1's joined on (item, epoch), with 31 wrong "
+    "verify instances and 4 wrong bet instances; that one test would have caught both bugs.")
 
 # ---------------------------------------------------------------- 5. Discussion and Limitations
 h2("5. Discussion and Limitations")
@@ -422,14 +424,12 @@ body_text(
 
 # ---------------------------------------------------------------- Code and Data
 h2("Code and Data")
-body_text("Code repository: available on request (the repository will be made public "
-    "before the camera-ready version; the code, items and results are archived with the "
-    "submission).")
+body_text("Code repository: code and data are available from the author on request (email).")
 body_text(
     "Data/Datasets: items are generated programmatically (seed 2026); the generator, sweep "
-    "configuration and analysis scripts are in the repository above. The repository also "
-    "contains the pre-fix data files (as *.pre_fix) and the parser fix, so the effect of the "
-    "parser bug can be reproduced exactly.")
+    "configuration and analysis scripts are available with the code above. The pre-fix data "
+    "files and the parser fix are included, so the effect of the parser bug can be reproduced "
+    "exactly.")
 body_text("Other artifacts (optional): none.")
 
 # ---------------------------------------------------------------- Author Contributions
@@ -533,6 +533,24 @@ body_text(
     "real-world decisions is untested. The first pilot at the API's default sampling cannot "
     "be recomputed reliably (its item keys were lost when the item files were regenerated), so "
     "no decoding comparison is reported.")
+
+body_text("Appendix E. Results affected by the parser bugs")
+body_text(
+    "Two bugs affected the numbers, both caught by audit. The first was the answer parser "
+    "itself: it took the first \u201cAnswer:\u201d in each response and captured markup instead of "
+    "the number. That changed bet accuracy 0.769 to 0.991, bet ECE 0.220 to 0.002, the bet "
+    "EV gap at \u03bb=9 from 1.302 [0.844, 1.767] to 0.013 [0.004, 0.027], the ablation bet "
+    "gap at \u03bb=9 from 1.027 to 0.227, condition B accuracy 0.301 to 0.992, condition C mean "
+    "confidence 64.9% to 93.8% and C AUROC 0.750 to 0.994, the tier calibration (bet tiers "
+    "0.50–0.80 to 0.80–1.00), the V1 pilot (B 0.479 to 0.537, C AUROC 0.318 to 0.216), and "
+    "epoch answer agreement 0.80–0.83 to 0.96–0.98. The second was in the fix script: it "
+    "rebuilt the sweep's correctness column by joining four Call 1 files and let later files "
+    "overwrite the A run on 14 keys. That changed the bet EV at \u03bb=9 (model 0.676 to 0.898, "
+    "calibrated 0.689 to 0.911), the ablation bet EV at \u03bb=9 (model 0.107 to 0.707, "
+    "calibrated 0.533 to 0.933) and its gap (0.427 to 0.227), the verify EV gaps "
+    "(\u03bb=4, c=0.1: 0.282 to 0.301; \u03bb=1, c=0.1: 0.059 to 0.074), and the check-vs-"
+    "correctness ratio (3.48 [2.59, 4.66] to 3.42 [2.57, 4.55]). All numbers in the main "
+    "text are the corrected values, verified against the raw files after both fixes.")
 
 # ---------------------------------------------------------------- LLM Usage Statement
 h2("LLM Usage Statement")

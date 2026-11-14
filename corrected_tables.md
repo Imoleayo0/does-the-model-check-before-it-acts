@@ -60,17 +60,23 @@
   cautious than it should be (abstaining costs ~0.91 x 0.29 at lam 9); the
   benchmark cannot tell whether this is the loss framing or something else.
 
-## Check-vs-correctness (verify, main sweep)
-- P(check|wrong) = 0.211 (232 instances, 15 distinct items) vs P(check|right) = 0.061
-- Ratio 3.48, item-level bootstrap 95% CI [2.59, 4.66]
+## Check-vs-correctness (verify, main sweep) — RE-RUN 2026-11-14 ~13:15 WAT on the fixed column
+- P(check|wrong) = 0.206 (248 instances, 15 distinct items) vs P(check|right) = 0.060 (n=1912)
+- Ratio 3.42, item-level bootstrap 95% CI [2.57, 4.55]
 - All 166 checks at 100% stated confidence; bet side shows no signal
+  (P(abstain|wrong) = 0.000 on n=16, P(abstain|right) = 0.015 on n=1784)
+- (The earlier values 0.211 / 0.061 / ratio 3.48 [2.59, 4.66] were computed on
+  the corrupted column: hv056 and hv064 were wrongly marked right, so the
+  wrong count was 232 instead of 248. The change is small.)
 
 ## NEW: P(check | working mode) — verify, main sweep (Analysis 1)
 - P(check | no working) = 0.104 (n=608) vs P(check | working) = 0.066 (n=1552)
 - On the 21 items with both modes: 0.093 vs 0.062, ratio 1.48,
   item-level bootstrap 95% CI [0.71, 3.13] — INCLUDES 1, NOT significant
-- By working x correctness: no-working + wrong 0.211 (n=232); no-working + right 0.037 (n=376);
+- By working x correctness: no-working + wrong 0.206 (n=248); no-working + right 0.033 (n=360);
   working + right 0.066 (n=1552); working + wrong does not exist (working is always correct)
+  (The earlier no-working + right value 0.037 on n=376 was also on the corrupted column:
+  hv056 and hv064 were wrongly counted as right among the no-working records; 45 x 8 = 360.)
 - Conclusion: the check signal tracks CORRECTNESS, not the response mode.
   The "cleaner" version (actions track reasoning) does not hold at item level.
 
