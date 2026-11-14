@@ -1,10 +1,24 @@
-# Corrected tables (frozen 2026-11-14 ~11:15 WAT)
+# Corrected tables (frozen 2026-11-14 ~11:15 WAT; EV tables re-frozen 2026-11-14 ~11:35 WAT)
 # All numbers recomputed with the fixed answer parser (fix_parser.py).
 # The original parser used re.search for the FIRST "Answer:" occurrence and
 # grabbed "**" / "\[" from "**Final Answer:**" lines. The fixed parser takes
 # the LAST "Answer:"/"Verdict:" line. Validated by an independent line-based
 # parser: 0 disagreements on 720 A-run + 266 A/B records.
 # DeepSeek balance is $0.00 — no further API runs are possible.
+#
+# SECOND BUG (found 2026-11-14 ~11:30 WAT, user-reported EV inconsistency):
+# fix_parser.py built its `corrected` dict by iterating over FOUR Call 1 files
+# (A-run, B/C re-pilot, reasoner slice, v4-pro slice) and letting later files
+# overwrite the same (item_id, epoch) keys. The B/C re-pilot is a separate
+# deepseek-chat run (T=0 non-determinism) and the reasoner/v4-pro slices are
+# DIFFERENT MODELS, so they disagreed with the A-run on 14 (item, epoch) keys
+# (11 bet items overwritten by v4-pro, 2 by B/C, 2 verify items by reasoner).
+# That corrupted 64 rows in each sweep CSV and understated the sweep's bet
+# accuracy to 0.969 (main) / 0.927 (ablation) instead of 0.991. Fixed by
+# fix_sweep_correct.py, which rebuilds both sweep CSVs' `correct` column from
+# results_call1_a.json ONLY (0 mismatches on re-check). All EV tables below
+# were re-run with analyze_sweep.py after that fix. Table 1 (model level)
+# was never affected: it comes from the A-run directly.
 
 ## A run (deepseek-chat, condition A, T=0, 240 items x 3 epochs = 720)
 - Overall: acc 0.951, mean conf 99.3%, SD 1.74, below 90% 0.0%, below 100% 14.3%
@@ -22,24 +36,29 @@
 - The verify "false bias" (100% false / 77% true) is a default-FALSE short-circuit, NOT arithmetic slipping
 
 ## EV gaps, main sweep (3,960 samples; calibrated policy per tier, in-sample)
-- Bet: lam 0.25 gap 0.002 [0.000, 0.007]; lam 1 gap 0.018 [0.007, 0.029];
+- Bet: lam 0.25 gap 0.002 [0.000, 0.007]; lam 1 gap 0.022 [0.009, 0.038];
   lam 4 gap 0.020 [0.007, 0.036]; lam 9 gap 0.013 [0.004, 0.027]
-  (bet EV at lam 9: model 0.676, calibrated 0.689, never 0.000)
-- Verify: lam 1 c 0.1 gap 0.059 [-0.021, 0.152]; lam 4 c 0.1 gap 0.282 [0.079, 0.523]
-  (verify EV at lam 4 c 0.1: model 0.618, calibrated 0.900)
+  (bet EV: lam 1 model 0.960 / calibrated 0.982; lam 4 model 0.936 / 0.956;
+   lam 9 model 0.898, calibrated 0.911, never 0.000)
+- Verify: lam 1 c 0.1 gap 0.074 [-0.013, 0.174] (model 0.826, calibrated 0.900);
+  lam 4 c 0.1 gap 0.301 [0.095, 0.541] (model 0.599, calibrated 0.900)
 - Coherence: bet 0.978-0.998, verify 0.881-0.974; n_diag = 0 everywhere
 - Verdict-aware policy (in-sample, check iff verdict FALSE):
-  lam 1 c 0.1: 0.939 (model 0.841, calibrated 0.900); lam 4 c 0.1: 0.939 (model 0.618, calibrated 0.900)
+  lam 1 c 0.1: 0.939 (model 0.826, calibrated 0.900); lam 4 c 0.1: 0.939 (model 0.599, calibrated 0.900)
   Beats the model in 4/8 verify cells, beats the calibrated policy in 3/8.
 
 ## EV gaps, no-threshold ablation (1 epoch, 1,320 samples)
-- Bet: lam 0.25 gap 0.000; lam 1 gap 0.080 [0.027, 0.133];
-  lam 4 gap 0.140 [0.040, 0.267]; lam 9 gap 0.427 [0.187, 0.707]
-  (bet EV at lam 9: model 0.107, calibrated 0.533; coherence 0.707 vs 0.987 main)
-- Verify: lam 4 c 0.1 gap 0.253 [0.029, 0.532]
+- Bet: lam 0.25 gap 0.000; lam 1 gap 0.120 [0.067, 0.173];
+  lam 4 gap 0.207 [0.120, 0.287]; lam 9 gap 0.227 [0.060, 0.347]
+  (bet EV at lam 9: model 0.707, calibrated 0.933; coherence 0.707 vs 0.987 main)
+  (bet EV: lam 1 model 0.867 / calibrated 0.987; lam 4 model 0.760 / 0.967)
+- Verify: lam 1 c 0.1 gap 0.118 [0.008, 0.239] (model 0.782, calibrated 0.900);
+  lam 4 c 0.1 gap 0.309 [0.041, 0.590] (model 0.591, calibrated 0.900)
 - The model UNDER-bets when it must derive the break-even: abstains 29% at lam 9
   while 99% accurate and stating ~100% confidence. Incoherent with its own
-  confidence, and it costs EV.
+  confidence, and it costs EV. With 99% accuracy the 29% abstention is more
+  cautious than it should be (abstaining costs ~0.91 x 0.29 at lam 9); the
+  benchmark cannot tell whether this is the loss framing or something else.
 
 ## Check-vs-correctness (verify, main sweep)
 - P(check|wrong) = 0.211 (232 instances, 15 distinct items) vs P(check|right) = 0.061
@@ -56,7 +75,8 @@
   The "cleaner" version (actions track reasoning) does not hold at item level.
 
 ## NEW: skip rate (Analysis 2)
-- By tier: vmul_10x5 40.0% skip, vmul_6x5 28.9%, vmul_8x5 15.6% — skipping rises with difficulty
+- By tier: vmul_10x5 40.0% skip, vmul_6x5 28.9%, vmul_8x5 15.6% — highest on the
+  largest operands, NOT monotone with difficulty (vmul_8x5 is lower than vmul_6x5)
 - By epoch: 28.9% / 30.0% / 25.6% — no epoch trend
 - Per item (of 3 epochs): 54 never skip, 11 skip once, 10 skip twice, 15 always skip
 - Expected if random Bernoulli(p=0.28): always ~2 items, never ~33 items
@@ -69,10 +89,10 @@
 
 ## NEW: EV baseline "check iff no working" (Analysis 3; replaces verdict-aware)
 - Observable from the transcript (the response either has working or it doesn't); in-sample.
-- lam=1: c 0.1: 0.972 (model 0.841, calibrated 0.900); c 0.3: 0.916 (0.789, 0.804);
-  c 0.5: 0.859 (0.781, 0.785); c 0.7: 0.803 (0.806, 0.785); c 0.9: 0.747 (0.784, 0.785)
-- lam=4: c 0.1: 0.972 (model 0.618, calibrated 0.900); c 0.5: 0.859 (0.539, 0.593);
-  c 0.9: 0.747 (0.529, 0.463)
+- lam=1: c 0.1: 0.972 (model 0.826, calibrated 0.900); c 0.3: 0.916 (0.774, 0.796);
+  c 0.5: 0.859 (0.774, 0.770); c 0.7: 0.803 (0.791, 0.770); c 0.9: 0.747 (0.769, 0.770)
+- lam=4: c 0.1: 0.972 (model 0.599, calibrated 0.900); c 0.5: 0.859 (0.502, 0.574);
+  c 0.9: 0.747 (0.492, 0.441)
 - Beats the model in 7/8 cells (loses only lam=1, c=0.9) and beats the calibrated
   policy in 7/8 cells (loses only lam=1, c=0.9); beats the verdict-aware baseline in all 8.
 - It works because the no-working responses are always FALSE: checking on them avoids
@@ -113,10 +133,19 @@
 - The "~68% vs ~91%" temperature comparison must be REMOVED from the paper.
 - The v2 task also uses the buggy parser, so the v2 accuracy (0.920) is understated too.
 
+## Epoch agreement (recomputed with the FIXED parser, 2026-11-14 ~11:35 WAT)
+- Answer agreement (all 240 items): pairwise 0.971 / 0.975 / 0.963; all three
+  identical on 95.4% of items. Bet only: 0.993 / 0.987 / 0.993, all three 98.7%.
+  Verify only: 0.933 / 0.956 / 0.911, all three 90.0%.
+  (The old numbers 0.80-0.83 / 72.5% were computed with the buggy parser.)
+- Confidence agreement: pairwise 0.854 / 0.883 / 0.904; all three identical 82.1%.
+  (Unchanged by the parser fix — confidence was never affected by it.)
+
 ## What changed vs the draft v2 numbers
 - Bet acc 0.769 -> 0.991; overall acc 0.812 -> 0.951; bet ECE 0.220 -> 0.002
 - Bet EV gap at lam 9: 1.302 [0.844, 1.767] -> 0.013 [0.004, 0.027] (headline result gone)
-- Ablation bet lam 9 gap: 1.027 -> 0.427; interpretation flips (under-betting, not over-betting)
+- Ablation bet lam 9 gap: 1.027 -> 0.227 (was 0.427 under the second bug; the
+  correct value is 0.227 [0.060, 0.347]); interpretation flips (under-betting, not over-betting)
 - B accuracy (v2 re-pilot): 0.301 -> 0.992 (parser bug)
 - C mean confidence: 64.9% -> 93.8% (parser bug); C AUROC 0.750 -> 0.994 (on 3 wrong items)
 - Verify numbers essentially unchanged (the verdict parser was fine except 2 items)

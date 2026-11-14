@@ -1,9 +1,9 @@
 model,family,tier,n,acc,mean_conf
 deepseek-chat|A|nothr,bet,mod_10_3,30,1.0,0.98
-deepseek-chat|A|nothr,bet,mod_8_3,30,0.9666666666666667,0.99
+deepseek-chat|A|nothr,bet,mod_8_3,30,1.0,0.99
 deepseek-chat|A|nothr,bet,mul_10x5,30,0.9666666666666667,0.9966666666666666
-deepseek-chat|A|nothr,bet,mul_11x6,30,0.7666666666666667,0.995
-deepseek-chat|A|nothr,bet,square_7,30,0.9333333333333333,0.985
-deepseek-chat|A|nothr,verify,vmul_10x5,30,0.8333333333333334,1.0
+deepseek-chat|A|nothr,bet,mul_11x6,30,1.0,0.995
+deepseek-chat|A|nothr,bet,square_7,30,1.0,0.985
+deepseek-chat|A|nothr,verify,vmul_10x5,30,0.8,1.0
 deepseek-chat|A|nothr,verify,vmul_6x5,30,0.9,1.0
-deepseek-chat|A|nothr,verify,vmul_8x5,30,0.9666666666666667,1.0
+deepseek-chat|A|nothr,verify,vmul_8x5,30,0.9333333333333333,1.0
