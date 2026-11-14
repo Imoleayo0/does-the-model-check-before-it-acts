@@ -80,6 +80,17 @@ and every flipped record was hand-checked. The corrected numbers are in
 ones as `*.pre_fix` backups, so the effect of the bug can be reproduced
 exactly.
 
+A second, smaller error in the same fix script then corrupted the sweep's
+correctness column: it rebuilt that column by joining four Call 1 files
+(the A run, a re-pilot, and two slices from different models) and let the
+later files overwrite the A run's values on 14 (item, epoch) keys,
+understating the sweep's bet accuracy to 0.969 and making the bet EV
+numbers inconsistent with Table 1's 0.991 accuracy. That was caught because
+the corrected EV numbers contradicted the accuracy arithmetic, and fixed by
+`fix_sweep_correct.py`, which rebuilds the column from the A run alone
+(0 mismatches on re-check). The files as corrupted by the first fix are
+kept as `*.pre_fix2` backups.
+
 ## AI assistance
 
 The code in this repository was written with AI assistance (Claude and
