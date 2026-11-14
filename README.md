@@ -44,8 +44,8 @@ Research Sprint, Track 1 (Model Epistemics & Decision-Making Evals).
   right on every false claim and wrong on all 31 true ones, while every
   verdict preceded by working was correct (194/194).
 - No-threshold ablation: the model under-bets as the penalty rises, losing
-  0.43 points per item at λ=9 against a calibrated policy (95% CI
-  [0.19, 0.71], one epoch).
+  0.23 points per item at λ=9 against a calibrated policy (95% CI
+  [0.06, 0.35], one epoch).
 
 ## Reproducing
 
