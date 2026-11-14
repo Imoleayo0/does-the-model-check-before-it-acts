@@ -91,3 +91,12 @@ the corrected EV numbers contradicted the accuracy arithmetic, and fixed by
 (0 mismatches on re-check). The files as corrupted by the first fix are
 kept as `*.pre_fix2` backups.
 
+## AI assistance
+
+The code in this repository was written with AI assistance (Claude and
+Muse), including the item generator, the sweep configuration, the analysis
+script and the Inspect task. The author conceived the project, chose the
+research direction and design decisions, directed the experiments and
+verified the results. The parser bug described above was in AI-written
+evaluation code, and it was caught by an audit the author directed; see
+the measurement note.
