@@ -1,0 +1,3 @@
+model,family,act_rate_slope,optimal_slope_given_beliefs,act_rate_range
+deepseek-chat|A|nothr,bet,-0.41333333333333333,-3.366631611618336e-16,0.29333333333333333
+deepseek-chat|A|nothr,verify,-0.13092453692502076,-3.8380295525303883e-16,0.13333333333333341
